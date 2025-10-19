@@ -5,50 +5,52 @@ const path = require('path');
 const cors = require('cors');
 
 dotenv.config();
+
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static frontend
+// Serve static frontend files
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PORT = process.env.PORT || 3000;
-
-// Configure transporter
+// Nodemailer transporter
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: Number(process.env.SMTP_PORT) || 465,
-    secure: (process.env.SMTP_SECURE === 'true'),
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : true,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
     }
 });
 
-// Verify transporter on startup
+// Verify SMTP at startup
 transporter.verify()
     .then(() => console.log('✅ SMTP transporter ready'))
     .catch(err => console.error('❌ SMTP transporter verification failed:', err.message));
 
-// Test endpoint to quickly check email
+// Test email route (optional)
 app.get('/test-email', async (req, res) => {
     try {
-        let info = await transporter.sendMail({
+        const info = await transporter.sendMail({
             from: process.env.SMTP_USER,
             to: process.env.EMAIL_TO,
             subject: 'Test Email',
-            text: 'This is a test email from local server'
+            text: 'This is a test email from your Diwali website 🎇'
         });
         console.log('Email info:', info.response);
-        res.send('Test email sent! Check console for info.');
+        res.send('✅ Test email sent! Check your inbox.');
     } catch (err) {
         console.error('Error sending test email:', err);
-        res.status(500).send('Failed: ' + err.message);
+        res.status(500).send('❌ Failed: ' + err.message);
     }
 });
 
-// Submit route to handle form submissions
+// Form submit route
 app.post('/submit', async (req, res) => {
     try {
         const { name, relation, message, upi, gameNumber, prize, sender } = req.body;
@@ -66,21 +68,23 @@ Game Number: ${gameNumber || 'N/A'}
 Prize: ${prize || 'N/A'}`
         };
 
-        let info = await transporter.sendMail(mailOptions);
-        console.log('Email sent:', info.response);
-console.log('Received form data:', req.body);
+        const info = await transporter.sendMail(mailOptions);
+        console.log('📨 Email sent:', info.response);
+        console.log('📋 Received form data:', req.body);
+
         res.status(200).json({ success: true, message: 'Email sent successfully!' });
     } catch (err) {
-        console.error('Error sending email:', err);
+        console.error('❌ Error sending email:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
 
 // SPA fallback route
-app.get('/', (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Start server
 app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
